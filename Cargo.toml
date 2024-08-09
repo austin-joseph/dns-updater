@@ -1,0 +1,9 @@
+[package]
+name = "dns-updater"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+apalis = "0.5.3"
+config = "0.14.0"
+reqwest = "0.12.5"
