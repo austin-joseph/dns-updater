@@ -3,3 +3,4 @@ target
 working_dir/*
 *.bak
 *.tar
+config.json
