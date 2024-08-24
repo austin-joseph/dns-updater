@@ -1,6 +1,8 @@
 mod services;
 
 use std::env;
+use std::ops::Add;
+use std::str::FromStr;
 use services::{
     ip_resolver_service,
     cloudflare_service::{
@@ -10,16 +12,22 @@ use services::{
 use log::{debug, error, info, trace};
 use serde::Deserialize;
 use crate::services::cloudflare_service::{UpdateTarget};
+use tokio::time::{self, Duration};
 
 #[tokio::main]
 async fn main() {
     let app_config: &AppConfig = &load_config_from_file();
     env_logger::init();
     info!("Application Start");
-    update_dns_records(&app_config.api_token, &app_config.update_targets).await;
+    let mut interval = time::interval(Duration::from_secs(app_config.interval_s));
+    loop {
+        interval.tick().await;
+        info!("Tick: Starting update dns task");
+        update_dns_records(&app_config.api_token, &app_config.update_targets).await;
+        info!("Tick: Ending update dns task");
+    }
     info!("Stopping");
 }
-
 async fn update_dns_records(api_token: &String, update_targets: &Vec<UpdateTarget>) {
     let ipaddr = match ip_resolver_service::get_ip().await {
         Ok(address) => {
@@ -36,7 +44,6 @@ async fn update_dns_records(api_token: &String, update_targets: &Vec<UpdateTarge
     let target_list: &Vec<UpdateTarget> = update_targets;
     for target in target_list {
         let dns_records = cloudflare_api.get_dns_records(&target.zone_id, &target.record_type, &target.domain).await.unwrap();
-        info!("Found {} records", dns_records.result.len());
         for dns_record in &dns_records.result {
             if (target.record_type.to_string().ne(&dns_record.ttype)
                 || target.domain.to_string().ne(&dns_record.name)
@@ -46,7 +53,7 @@ async fn update_dns_records(api_token: &String, update_targets: &Vec<UpdateTarge
             }
             if (dns_record.content.eq(&ipaddr)
             ) {
-                debug!("Ip address for {} matches whats in cloudflare. Local Ip: {} == Cloudflare Registered Ip: {}", target.domain, ipaddr,dns_record.content );
+                info!("Ip address for {} matches whats in cloudflare. Local Ip: {} == Cloudflare Registered Ip: {}", target.domain, ipaddr,dns_record.content );
                 continue;
             }
             info!("Ip address mismatch for domain {} attempting to update. Local IP {} Registered Ip {}", target.domain, ipaddr, dns_record.content );
@@ -89,6 +96,7 @@ fn load_config_from_file() -> AppConfig {
 #[derive(Deserialize)]
 #[derive(Clone)]
 pub struct AppConfig {
+    interval_s: u64,
     api_token: String,
     update_targets: Vec<UpdateTarget>,
 }

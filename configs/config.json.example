@@ -1,4 +1,5 @@
 {
+  "interval_s": 300,
   "api_token": "",
   "update_targets": [
     {
