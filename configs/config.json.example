@@ -1,0 +1,10 @@
+{
+  "api_token": "",
+  "update_targets": [
+    {
+      "domain": "*.example.com",
+      "record_type": "A",
+      "zone_id": ""
+    }
+  ]
+}

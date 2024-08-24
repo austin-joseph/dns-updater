@@ -15,12 +15,14 @@ use crate::services::cloudflare_service::{UpdateTarget};
 async fn main() {
     let app_config: &AppConfig = &load_config_from_file();
     env_logger::init();
-
     info!("Application Start");
+    update_dns_records(&app_config.api_token, &app_config.update_targets).await;
+    info!("Stopping");
+}
 
+async fn update_dns_records(api_token: &String, update_targets: &Vec<UpdateTarget>) {
     let ipaddr = match ip_resolver_service::get_ip().await {
         Ok(address) => {
-            info!("I{}", address);
             address
         }
         Err(_) => {
@@ -28,9 +30,10 @@ async fn main() {
             panic!("Unable to retrieve ip address")
         }
     };
+    info!("Local address {}", ipaddr);
 
-    let cloudflare_api = CloudFlareApi::new(&app_config.api_token);
-    let target_list: &Vec<UpdateTarget> = &app_config.update_targets;
+    let cloudflare_api = CloudFlareApi::new(api_token);
+    let target_list: &Vec<UpdateTarget> = update_targets;
     for target in target_list {
         let dns_records = cloudflare_api.get_dns_records(&target.zone_id, &target.record_type, &target.domain).await.unwrap();
         info!("Found {} records", dns_records.result.len());
@@ -59,9 +62,7 @@ async fn main() {
             }
         }
     }
-    info!("Stopping");
 }
-
 fn load_config_from_file() -> AppConfig {
     let args: Vec<String> = env::args().collect();
     let config_loc = match args.get(1) {
