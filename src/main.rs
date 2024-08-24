@@ -46,7 +46,7 @@ async fn update_dns_records(api_token: &String, update_targets: &Vec<UpdateTarge
             }
             if (dns_record.content.eq(&ipaddr)
             ) {
-                debug!("Ip address for {} matches whats in cloudflare. Local Ip: {} == Cloudflare Registered Ip: {}", target.domain, ipaddr,dns_record.name );
+                debug!("Ip address for {} matches whats in cloudflare. Local Ip: {} == Cloudflare Registered Ip: {}", target.domain, ipaddr,dns_record.content );
                 continue;
             }
             info!("Ip address mismatch for domain {} attempting to update. Local IP {} Registered Ip {}", target.domain, ipaddr, dns_record.content );
