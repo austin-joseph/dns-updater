@@ -3,4 +3,4 @@ To run first argument must be location of a config file matching the format of c
 
 
 docker build -t dns-updater . -f ./docker/Dockerfile
-docker run -itd --name dns-updater dns-updater
+docker run -itd --restart unless-stopped --name dns-updater dns-updater
