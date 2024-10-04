@@ -1,0 +1,1 @@
+docker export dns-updater -o ./dns-updater-fs.tar
