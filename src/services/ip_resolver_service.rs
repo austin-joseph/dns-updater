@@ -1,6 +1,4 @@
-use log::error;
-
-pub async fn get_ip() -> Result<String, &'static str> {
+pub async fn get_ip() -> Result<String, String> {
     match reqwest::get("https://api.ipify.org/").await {
         Ok(response) => {
             match response.text().await {
@@ -8,14 +6,12 @@ pub async fn get_ip() -> Result<String, &'static str> {
                     Ok(ip)
                 }
                 Err(error) => {
-                    error!("{0}]", &error);
-                    Err("No ip addr")
+                    Err(format!("[{0}]", &error))
                 }
             }
         }
         Err(error) => {
-            error!("{0}]", &error);
-            Err("No ip addr")
+            Err(format!("[{0}]", &error))
         }
     }
 }

@@ -1,17 +1,16 @@
 mod services;
 
-use std::env;
-use std::ops::Add;
-use std::str::FromStr;
-use services::{
-    ip_resolver_service,
-    cloudflare_service::{
-        CloudFlareApi
-    },
-};
+use crate::services::cloudflare_service::UpdateTarget;
 use log::{debug, error, info, trace};
 use serde::Deserialize;
-use crate::services::cloudflare_service::{UpdateTarget};
+use services::{
+    cloudflare_service::CloudFlareApi,
+    ip_resolver_service,
+};
+use std::env;
+use std::error::Error;
+use std::ops::Add;
+use std::str::FromStr;
 use tokio::time::{self, Duration};
 
 #[tokio::main]
@@ -23,19 +22,26 @@ async fn main() {
     loop {
         interval.tick().await;
         info!("Tick: Starting update dns task");
-        update_dns_records(&app_config.api_token, &app_config.update_targets).await;
+        match update_dns_records(&app_config.api_token, &app_config.update_targets).await {
+            Ok(_) => {
+                info!("Job succeeded");
+            }
+            Err(_) => {
+                error!("Job failed");
+            }
+        }
         info!("Tick: Ending update dns task");
     }
     info!("Stopping");
 }
-async fn update_dns_records(api_token: &String, update_targets: &Vec<UpdateTarget>) {
+async fn update_dns_records(api_token: &String, update_targets: &Vec<UpdateTarget>) -> Result<(), ()> {
     let ipaddr = match ip_resolver_service::get_ip().await {
         Ok(address) => {
             address
         }
-        Err(_) => {
-            error!("Unable to retrieve ip address");
-            panic!("Unable to retrieve ip address")
+        Err(message) => {
+            error!("{}", message);
+            return Err(());
         }
     };
     info!("Local address {}", ipaddr);
@@ -43,7 +49,15 @@ async fn update_dns_records(api_token: &String, update_targets: &Vec<UpdateTarge
     let cloudflare_api = CloudFlareApi::new(api_token);
     let target_list: &Vec<UpdateTarget> = update_targets;
     for target in target_list {
-        let dns_records = cloudflare_api.get_dns_records(&target.zone_id, &target.record_type, &target.domain).await.unwrap();
+        let dns_records = match cloudflare_api.get_dns_records(&target.zone_id, &target.record_type, &target.domain).await {
+            Ok(address) => {
+                address
+            }
+            Err(message) => {
+                error!("{}", message);
+                return Err(());
+            }
+        };
         for dns_record in &dns_records.result {
             if (target.record_type.to_string().ne(&dns_record.ttype)
                 || target.domain.to_string().ne(&dns_record.name)
@@ -69,6 +83,7 @@ async fn update_dns_records(api_token: &String, update_targets: &Vec<UpdateTarge
             }
         }
     }
+    Ok(())
 }
 fn load_config_from_file() -> AppConfig {
     let args: Vec<String> = env::args().collect();
